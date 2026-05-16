@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Videy</title>
+<link rel="icon" href="favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://doodds.space">
+<link rel="dns-prefetch" href="//doodds.space">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.6.0/remixicon.min.css" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--nh:48px;--sb:env(safe-area-inset-bottom,0px);--st:env(safe-area-inset-top,0px);--pk:#fe2c55;--cy:#25f4ee;--w6:rgba(255,255,255,.6);--w5:rgba(255,255,255,.5);--w1:rgba(255,255,255,.1)}
+html,body{height:100%;overflow:hidden;background:#000;color:#fff;font-family:'Inter',-apple-system,sans-serif;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+::-webkit-scrollbar{display:none}
+.app{position:relative;width:100%;height:100%;max-width:500px;margin:0 auto;display:flex;flex-direction:column}
+/* layout split */
+.feed{
+  display:flex;
+  flex-direction:column;
+  height:100%;
+}
+
+/* 3:4 video */
+.video-area{
+  flex:3;
+  position:relative;
+  overflow:hidden;
+}
+
+/* 1:4 comment navbar */
+.comment-navbar{
+    position:relative;
+  flex:1;
+  background:#0a0a0a;
+  display:flex;
+  flex-direction:column;
+  padding:10px;
+}
+
+/* area kosong untuk comment */
+.comment-list{
+  flex:1;
+  overflow:hidden;
+  margin-bottom:8px;
+  position:relative;
+}
+
+/* efek gradient atas (biar keliatan scroll nanti) */
+.comment-list::after{
+  content:'';
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  height:40px;
+  background:linear-gradient(to top,#0a0a0a,transparent);
+}
+
+/* bottom */
+.comment-bottom{
+  display:flex;
+  align-items:flex-end; /* â¬…ï¸ ini kuncinya */
+  justify-content:space-between;
+  gap:10px;
+}
+
+/* input comment style (rounded kayak live) */
+.comment-input-wrapper {
+    flex: 1;
+    height: 42px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 30px;
+    display: flex;
+    align-items: center; /* center vertikal */
+    padding: 0 14px;
+    position: relative;
+    backdrop-filter: blur(10px);
+}
+
+.comment-input-wrapper i {
+    font-size: 18px;
+    color: #aaa;
+    margin-right: 10px;
+    pointer-events: none;
+    line-height: 42px; /* supaya sejajar vertikal */
+}
+
+.comment-input {
+    flex: 1;
+    height: 100%;
+    outline: none;
+    color: #fff;
+    font-size: 14px;
+    line-height: 42px; /* â¬…ï¸ ini penting supaya placeholder sejajar */
+}
+
+.comment-input[data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: #aaa;
+    font-size: 14px;
+    line-height: 42px; /* placeholder sejajar dengan icon */
+}
+
+/* telegram icon */
+.comment-actions img{
+  width:28px;
+  height:28px;
+}
+
+/* like */
+.comment-actions .si{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.comment-actions .iw i{
+  font-size:26px;
+}
+
+.comment-actions .ct{
+  font-size:12px;
+}
+.vc{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.vc iframe{width: 100%;height: 100%;object-fit: contain;display: block;}
+.sb {
+    position:absolute;
+    top:18px;
+    left:18px;
+    z-index:10;
+    display:flex;
+    align-items:center; /* vertical center */
+    gap:10px;           /* jarak avatar & text */
+}
+.user-info {
+    display:flex;
+    flex-direction:column; /* username di atas, followers di bawah */
+    justify-content:center; /* center vertikal sesuai avatar */
+}
+.username {
+    color:#fff;
+    font-weight:600;
+    font-size:16px;
+}
+
+.followers {
+    font-size:14px;
+    color: rgba(255,255,255,0.7);
+    margin-top:2px;
+    font-weight:500;
+}
+.follow-btn {
+    background-color: #fe2c55; /* pink */
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, background-color 0.2s ease;
+}
+
+.pi{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%) scale(0);
+  opacity:0;
+  pointer-events:none; /* penting: default tidak menghalangi klik */
+  transition:opacity .15s, transform .15s;
+  z-index: 5; /* pastikan di atas video saat tampil */
+}
+
+.pi.show{
+  opacity:1;
+  transform:translate(-50%,-50%) scale(1);
+  pointer-events:auto; /* aktifkan klik saat tampil */
+}
+.pi i{font-size:56px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.5))}
+.dh{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);pointer-events:none;z-index:15;opacity:0}
+.dh.show{animation:dh .8s ease forwards}
+.dh i{font-size:100px;color:var(--pk);filter:drop-shadow(0 2px 12px rgba(254,44,85,.6))}
+.aw{position:relative;margin-bottom:0px}
+.av{width:48px;height:48px;border-radius:50%;border:2px solid #fff;background:#2c2c2c;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.av i{font-size:24px;color:#888}
+.sb .si{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+.sb .iw{width:42px;height:42px;display:flex;align-items:center;justify-content:center;transition:transform .15s}
+.sb .iw:active{transform:scale(.85)}
+.sb .iw i{font-size:32px;color:#fff}
+.sb .si.liked .iw i{color:var(--pk)}
+.sb .si.liked .iw i{
+    color: var(--pk); /* tombol like jadi merah */
+    animation: pop .35s ease;
+}
+
+/* Heart popup di tengah layar */
+.dh.show{
+    animation: dh .8s ease forwards;
+    opacity: 1;
+}
+@keyframes dh{
+    0%{opacity:1;transform:translate(-50%,-50%) scale(0)}
+    15%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}
+    30%{transform:translate(-50%,-50%) scale(.95)}
+    45%,80%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    100%{opacity:0;transform:translate(-50%,-50%) scale(1.1)}
+}
+@keyframes pop{
+    0%{transform:scale(1)}
+    30%{transform:scale(1.3)}
+    100%{transform:scale(1)}
+}
+
+.telegram-float {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* supaya teks center di bawah icon */
+  justify-content: center;
+  position: absolute;
+  right: 18px;
+  bottom: 80px;
+  animation: floatTG 2s ease-in-out infinite;
+  z-index: 20;
+  text-decoration: none; /* hilangkan underline dari link */
+}
+
+.telegram-float img{
+  width:44px;
+  height:44px;
+  object-fit:contain;
+}
+
+.telegram-float .telegram-text {
+  margin-top: 4px;
+  font-size: 12px;
+  color: White;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  text-decoration: none;
+}
+  
+
+@keyframes floatTG{
+  0%{ transform:translateY(0); }
+  50%{ transform:translateY(-10px); }
+  100%{ transform:translateY(0); }
+}
+.telegram-float img{
+  filter: drop-shadow(0 4px 10px rgba(37,244,238,0.6));
+}
+.telegram-float:active{
+  transform: scale(0.9);
+}
+
+/* Bottom controls */
+.bottom-controls{
+  position:absolute;
+  bottom:18px;
+  left:0;
+  right:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 12px;
+  pointer-events:none;
+}
+
+.bottom-controls .comment-label{
+  color:rgba(255,255,255,0.5);
+  font-size:22px;
+  font-weight:500;
+  pointer-events:auto;
+}
+.bottom-controls .right-buttons{
+  display:flex;
+  gap:12px;
+  pointer-events:auto;
+}
+.bottom-controls .right-buttons .si .iw i{font-size:32px}
+.bottom-controls .right-buttons .si{
+  display:flex;
+  flex-direction:column;
+  align-items:center;     /* center horizontal */
+  justify-content:center; /* center vertical */
+  text-align:center;
+  gap:4px;
+}
+.bottom-controls .right-buttons .ct{
+  font-size:16px;
+  text-align:center;
+}
+
+/* Keyframes */
+@keyframes dh{0%{opacity:1;transform:translate(-50%,-50%) scale(0)}15%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}30%{transform:translate(-50%,-50%) scale(.95)}45%,80%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.1)}}
+@keyframes pop{0%{transform:scale(1)}30%{transform:scale(1.3)}100%{transform:scale(1)}}
+
+/* Default icon (putih) */
+#lb .iw i{
+  color:#fff;
+  transition:color .2s ease, transform .2s ease;
+}
+
+/* Saat liked â†’ merah + animasi */
+#lb.liked .iw i{
+  color: var(--pk);
+  animation: pop .35s ease;
+}
+
+/* efek tekan */
+#lb .iw:active i{
+  transform: scale(1.2);
+}
+
+/* animasi pop */
+@keyframes pop{
+  0%{transform:scale(1)}
+  30%{transform:scale(1.4)}
+  60%{transform:scale(.9)}
+  100%{transform:scale(1)}
+}
+
+/* Heart besar tengah */
+.dh.show{
+  animation: dh .8s ease forwards;
+  opacity: 1;
+}
+
+@keyframes dh{
+  0%{opacity:1;transform:translate(-50%,-50%) scale(0)}
+  15%{opacity:1;transform:translate(-50%,-50%) scale(1.3)}
+  30%{transform:translate(-50%,-50%) scale(.9)}
+  50%,80%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.1)}
+}
+
+.chat-bubble {
+    display: flex;
+    align-items: flex-start;
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+    transition: all 0.4s ease;
+    margin-bottom: 4px; /* â¬…ï¸ jarak antar bubble */
+}
+
+.chat-bubble.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin-right: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #fff;
+}
+
+.bubble {
+    max-width: 70%;
+    background: rgba(255,255,255,0.1);
+    padding: 8px 12px;
+    border-radius: 16px;
+    position: relative;
+    font-size: 14px;
+    line-height: 1.3;
+    backdrop-filter: blur(6px);
+}
+
+.bubble::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    left: -6px;
+    width: 0;
+    height: 0;
+    border-top: 6px solid transparent;
+    border-right: 6px solid rgba(255,255,255,0.1);
+    border-bottom: 6px solid transparent;
+}
+
+/* Link style */
+.bubble a {
+    color: #25f4ee;
+    text-decoration: underline;
+}
+</style>
+</head>
+<body oncontextmenu="return false;">
+<div class="app">
+  <div class="feed">
+      
+    <!-- VIDEO AREA (3:4) -->
+  <div class="video-area">
+    <div class="vc" id="vc">
+      <iframe id="v" src="https://doodds.space/lb1oELs01" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>
+    </div>
+
+    <div class="pi" id="pi"><i id="pii" class="ri-play-fill"></i></div>
+    <div class="dh" id="dh"><i class="ri-heart-fill"></i></div>
+
+    <div class="sb">
+         <div class="aw si">
+            <div class="av">
+              <img src="poster/9.jpg" style="width:100%;height:100%;object-fit:cover;">
+            </div>
+          </div>
+            <div class="username"> Dinda Utami
+              <div class="followers">155K Pengikut</div>
+        </div>
+        <button class="follow-btn">Ikuti</button>
+    </div>
+  </div>
+
+  <!-- COMMENT NAVBAR (1:4) -->
+  <div class="comment-navbar">
+
+    <!-- area kosong untuk comment -->
+    <div class="comment-list" id="comment-list"></div>
+
+    <!-- bottom controls -->
+    <div class="comment-bottom">
+
+      <!-- input comment -->
+      <div class="comment-input-wrapper">
+        <i class="ri-chat-3-line"></i>
+        <div class="comment-input" id="comment-input" contenteditable="true" spellcheck="false" data-placeholder="Write a comment..."></div>
+    </div>
+
+      <!-- right buttons -->
+      <div class="comment-actions">
+
+        <!-- like -->
+        <div class="si" id="lb">
+          <div class="iw"><i class="ri-heart-fill"></i></div>
+          <span class="ct" id="lc">0</span>
+        </div>
+      </div>
+    </div>
+    
+     <!-- TELEGRAM PINDAH KE SINI -->
+    <a href="https://t.me/asupanviralvip2" target="_blank" class="telegram-float">
+      <img src="https://static.vecteezy.com/system/resources/thumbnails/016/716/472/small/telegram-icon-free-png.png">
+      <span class="telegram-text">Telegram</span>
+    </a>
+    
+  </div>
+
+</div>
+</div>
+
+<script>
+var vid='lb1oELs01';
+
+function uid(){
+    var k='_vdid';
+    var d=localStorage.getItem(k);
+    if(!d){
+        d='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){
+            var r=Math.random()*16|0;
+            return(c==='x'?r:(r&0x3|0x8)).toString(16);
+        });
+        localStorage.setItem(k,d)
+    }
+    return d;
+}
+
+function fmt(n){
+    if(n>=1e6) return (n/1e6).toFixed(n%1e6>=1e5?1:0).replace(/\.0$/,'')+'M';
+    if(n>=1e3) return (n/1e3).toFixed(n%1e3>=100?1:0).replace(/\.0$/,'')+'K';
+    return ''+n;
+}
+
+var pi = document.getElementById('pi');
+var iframe = document.getElementById('v');
+
+// klik tombol play overlay
+pi.addEventListener('click', function(){
+    pi.classList.remove('show'); // sembunyikan tombol
+    pi.style.pointerEvents = 'none';
+    
+    // jika iframe punya API untuk play
+    // iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+});
+
+var lb=document.getElementById('lb');
+var lc=document.getElementById('lc');
+var lkBusy=false;
+
+function likeAct(cb){
+    if(!vid) return;
+
+    var fd=new FormData();
+    fd.append('action','like');
+    fd.append('vid',vid);
+    fd.append('did',uid());
+
+    fetch(location.href,{method:'POST',body:fd})
+    .then(r=>r.json())
+    .then(function(d){
+        lc.textContent=fmt(d.count);
+
+        var s=JSON.parse(localStorage.getItem('_vl')||'{}');
+
+        if(d.active){
+            // LIKE
+            lb.classList.add('liked');
+            s[vid]=1;
+
+            // efek hati tengah
+            var dh=document.getElementById('dh');
+            dh.classList.remove('show'); // reset biar bisa replay
+            void dh.offsetWidth; // force reflow
+            dh.classList.add('show');
+
+        }else{
+            // UNLIKE
+            lb.classList.remove('liked');
+            delete s[vid];
+        }
+
+        localStorage.setItem('_vl',JSON.stringify(s));
+        if(cb) cb();
+    })
+    .catch(function(){ if(cb) cb(); });
+}
+
+// Sync like state
+(function(){
+    var sl=JSON.parse(localStorage.getItem('_vl')||'{}');
+    if(sl[vid]) lb.classList.add('liked');
+
+    fetch('?getlikes='+vid)
+    .then(r=>r.json())
+    .then(function(d){
+        lc.textContent=fmt(d.count);
+    });
+})();
+
+lb.addEventListener('click', function(e){
+    e.stopPropagation();
+    if(lkBusy) return;
+    lkBusy=true;
+    likeAct(function(){ lkBusy=false; });
+});
+
+const commentList = document.getElementById('comment-list');
+
+// daftar pesan
+const comments = [
+    "VCS Ayo",
+    "Montok banget ini mah!",
+    "Suka Banget",
+    "Kapan Main Bareng?",
+    "Yuk Join t.me/asupanviralvip2",
+    "Tambah dong FULL DURASI",
+    "Yang fefek Jule ada?",
+    "Legit Banget",
+    "Request Ugthea Dong",
+    "Tante HOT MOM Itha ada yang sama Bule",
+    "Bule sama Ojol itu dong",
+    "Yuk Join t.me/asupanviralvip2",
+    "Nomor wa aku 082143438821",
+    "Duh Engas Banget",
+    "Hot Banget",
+    "Duuuhh Bantu Keluarin Dong",
+    "Seru banget yang ini",
+    "Yuk Join t.me/asupanviralvip2",
+];
+
+// random avatar generator
+function randomAvatar() {
+    const colors = ["#fe2c55","#25f4ee","#ffb400","#ff6b6b","#6c5ce7"];
+    const initials = ["A","B","C","D","E","F","G"];
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const initial = initials[Math.floor(Math.random() * initials.length)];
+    const div = document.createElement('div');
+    div.className = 'avatar';
+    div.style.background = color;
+    div.textContent = initial;
+    return div;
+}
+
+// buat bubble
+function createBubble(text){
+    const bubbleWrap = document.createElement('div');
+    bubbleWrap.className = 'chat-bubble';
+    bubbleWrap.style.marginBottom = '10px'; // spasi antar bubble
+
+    // avatar
+    bubbleWrap.appendChild(randomAvatar());
+
+    // bubble teks
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+
+    // cek t.me
+    if(text.includes("t.me/")){
+        bubble.innerHTML = text.replace(/(t\.me\/[A-Za-z0-9_]+)/g, '<a href="https://$1" target="_blank">$1</a>');
+    } else {
+        bubble.textContent = text;
+    }
+
+    bubbleWrap.appendChild(bubble);
+    commentList.appendChild(bubbleWrap);
+
+    // trigger animasi pop
+    setTimeout(() => bubbleWrap.classList.add('show'), 50);
+
+    // jika lebih dari 3 bubble, hapus paling atas
+    if(commentList.children.length > 3){
+        commentList.removeChild(commentList.children[0]);
+    }
+}
+
+// muncul setiap 10 detik, looping
+setInterval(() => {
+    const randIndex = Math.floor(Math.random() * comments.length);
+    createBubble(comments[randIndex]);
+}, 10000);
+
+// tampil awal 1 bubble supaya tidak kosong
+createBubble(comments[Math.floor(Math.random() * comments.length)]);
+
+const commentInput = document.getElementById('comment-input');
+
+commentInput.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+        e.preventDefault(); // cegah line break
+        commentInput.blur(); // hilangkan focus â†’ keyboard hilang
+        commentInput.textContent = ''; // kosongkan input
+    }
+});
+
+// placeholder simple
+commentInput.addEventListener('focus', function(){
+    commentInput.dataset.placeholderVisible = false;
+});
+commentInput.addEventListener('blur', function(){
+    if(commentInput.textContent.trim() === ''){
+        commentInput.dataset.placeholderVisible = true;
+    }
+});
+
+</script>
+
+  <!-- Histats.com  START  (aync)-->
+<script type="text/javascript">var _Hasync= _Hasync|| [];
+_Hasync.push(['Histats.start', '1,5020704,4,0,0,0,00010000']);
+_Hasync.push(['Histats.fasi', '1']);
+_Hasync.push(['Histats.track_hits', '']);
+(function() {
+var hs = document.createElement('script'); hs.type = 'text/javascript'; hs.async = true;
+hs.src = ('//s10.histats.com/js15_as.js');
+(document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(hs);
+})();</script>
+
+<noscript><a href="/" target="_blank"><img  src="//sstatic1.histats.com/0.gif?5020704&101" alt="web stats" border="0"></a></noscript>
+<!-- Histats.com  END  -->
+
+</body>
+</html>
